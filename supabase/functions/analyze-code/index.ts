@@ -56,15 +56,23 @@ Provide a structured JSON response with:
 
 For each fix, provide:
 1. The file path
-2. A unified diff patch
-3. Explanation of the fix
-4. Risk assessment (low/medium/high)
+2. The EXACT original code that needs to be changed (the problematic code)
+3. The EXACT fixed code to replace it with
+4. A unified diff showing the change
+5. Explanation of the fix
+6. Risk assessment (low/medium/high)
+
+IMPORTANT: The "original" field should contain the exact code snippet that needs to be changed (what to remove).
+The "fixed" field should contain the exact replacement code (what to add instead).
+Keep these snippets focused on the specific lines being changed.
 
 Respond with JSON:
 {
   "patches": [
     {
       "file": "path/to/file",
+      "original": "exact original code to change",
+      "fixed": "exact fixed code to replace with",
       "diff": "unified diff format",
       "explanation": "what this fixes",
       "risk": "low|medium|high",
