@@ -23,7 +23,7 @@ function truncateContent(content: string, maxLength: number): string {
   return content.substring(0, maxLength) + '\n... [truncated]';
 }
 
-// Prepare files with truncation
+// Prepare files with truncation - keep it small for Groq limits
 function prepareFiles(files: { path: string; content: string }[], maxPerFile: number, maxFiles: number) {
   return files.slice(0, maxFiles).map(f => 
     `--- ${f.path} ---\n${truncateContent(f.content, maxPerFile)}`
@@ -36,9 +36,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
+    if (!GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY is not configured');
     }
 
     const { repoSummary, action } = await req.json() as AnalysisRequest;
@@ -47,97 +47,79 @@ serve(async (req) => {
     let userPrompt = '';
 
     if (action === 'analyze') {
-      systemPrompt = `You are an expert code analyzer. Analyze the provided repository summary and identify:
-1. Critical errors that need immediate fixing
-2. Code quality issues and warnings
-3. Security vulnerabilities
-4. Performance concerns
-5. Best practice violations
+      systemPrompt = `You are an expert code analyzer. Analyze the provided repository and identify issues.
 
-Provide a structured JSON response with:
+Respond ONLY with valid JSON (no markdown, no code blocks):
 {
-  "criticalErrors": [{"file": "path", "line": number, "issue": "description", "severity": "critical|high|medium|low"}],
+  "criticalErrors": [{"file": "path", "line": 1, "issue": "description", "severity": "critical"}],
   "warnings": [{"file": "path", "issue": "description"}],
-  "securityIssues": [{"file": "path", "issue": "description", "cve": "if applicable"}],
+  "securityIssues": [{"file": "path", "issue": "description", "cve": ""}],
   "suggestions": ["suggestion1", "suggestion2"],
-  "overallScore": number (0-100),
+  "overallScore": 75,
   "summary": "brief summary"
 }`;
-      const filesContent = prepareFiles(repoSummary.files, 1500, 15);
-      userPrompt = `Analyze this repository:\n\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles:\n${filesContent}\n\nExisting Errors:\n${repoSummary.errors.slice(0, 20).join('\n')}\n\nWarnings:\n${repoSummary.warnings.slice(0, 20).join('\n')}`;
+      const filesContent = prepareFiles(repoSummary.files, 800, 8);
+      userPrompt = `Analyze:\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles:\n${filesContent}\n\nErrors:\n${repoSummary.errors.slice(0, 10).join('\n')}`;
     } else if (action === 'fix') {
-      systemPrompt = `You are an expert code fixer. Generate minimal, safe patches to fix the identified issues.
+      systemPrompt = `You are an expert code fixer. Generate patches to fix issues.
 
-For each fix, provide:
-1. The file path
-2. The EXACT original code that needs to be changed (the problematic code)
-3. The EXACT fixed code to replace it with
-4. A unified diff showing the change
-5. Explanation of the fix
-6. Risk assessment (low/medium/high)
-
-IMPORTANT: The "original" field should contain the exact code snippet that needs to be changed (what to remove).
-The "fixed" field should contain the exact replacement code (what to add instead).
-Keep these snippets focused on the specific lines being changed.
-
-Respond with JSON:
+Respond ONLY with valid JSON (no markdown, no code blocks):
 {
   "patches": [
     {
       "file": "path/to/file",
       "original": "exact original code to change",
       "fixed": "exact fixed code to replace with",
-      "diff": "unified diff format",
+      "diff": "- old\\n+ new",
       "explanation": "what this fixes",
-      "risk": "low|medium|high",
-      "testCommand": "command to verify fix"
+      "risk": "low",
+      "testCommand": "npm test"
     }
   ],
   "summary": "overall fix summary",
-  "fixedCount": number,
-  "skippedCount": number,
-  "skippedReasons": ["reason1"]
+  "fixedCount": 1,
+  "skippedCount": 0,
+  "skippedReasons": []
 }`;
-      const filesContent = prepareFiles(repoSummary.files, 2000, 10);
-      userPrompt = `Generate fixes for these issues:\n\nRepository Info:\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles with issues:\n${filesContent}\n\nErrors to fix:\n${repoSummary.errors.slice(0, 15).join('\n')}\n\nWarnings:\n${repoSummary.warnings.slice(0, 15).join('\n')}`;
+      const filesContent = prepareFiles(repoSummary.files, 1000, 6);
+      userPrompt = `Fix issues:\nLanguages: ${repoSummary.languages.join(', ')}\n\nFiles:\n${filesContent}\n\nErrors:\n${repoSummary.errors.slice(0, 8).join('\n')}`;
     } else if (action === 'generate-docs') {
-      systemPrompt = `You are a technical documentation expert. Generate comprehensive documentation for the codebase.
+      systemPrompt = `You are a documentation expert. Generate docs for the codebase.
 
-Generate:
-1. A professional README.md with project overview, setup instructions, usage examples
-2. A repo-summary.md with architecture details
-3. A problems-solved.md documenting what issues were fixed
-
-Respond with JSON:
+Respond ONLY with valid JSON (no markdown, no code blocks):
 {
-  "readme": "full README.md content in markdown",
-  "summary": "repo-summary.md content",
-  "problemsSolved": "problems-solved.md content"
+  "readme": "# Project Name\\n\\n## Overview\\n...",
+  "summary": "Architecture summary...",
+  "problemsSolved": "Issues fixed..."
 }`;
-      const filesContent = prepareFiles(repoSummary.files, 1000, 8);
-      userPrompt = `Generate documentation for:\n\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\nStructure: ${repoSummary.structure.slice(0, 30).join('\n')}\n\nKey files:\n${filesContent}`;
+      const filesContent = prepareFiles(repoSummary.files, 600, 5);
+      userPrompt = `Generate docs:\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\nStructure: ${repoSummary.structure.slice(0, 15).join('\n')}\n\nFiles:\n${filesContent}`;
     }
 
-    console.log(`Processing ${action} request with Lovable AI...`);
+    console.log(`Processing ${action} request with Groq...`);
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
+        temperature: 0.7,
+        max_completion_tokens: 4096,
+        top_p: 1,
+        stream: false,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
+      console.error('Groq API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -149,17 +131,17 @@ Respond with JSON:
         });
       }
       
-      if (response.status === 402) {
+      if (response.status === 413) {
         return new Response(JSON.stringify({ 
           success: false, 
-          error: 'AI credits exhausted. Please add credits to continue.' 
+          error: 'Request too large. Please try with fewer files.' 
         }), {
-          status: 402,
+          status: 413,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      throw new Error(`AI API error: ${response.status}`);
+      throw new Error(`Groq API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -171,7 +153,7 @@ Respond with JSON:
 
     console.log(`${action} completed successfully`);
 
-    // Try to parse as JSON, otherwise return as text
+    // Try to parse as JSON
     let result;
     try {
       // Extract JSON from markdown code blocks if present
@@ -179,6 +161,7 @@ Respond with JSON:
       const jsonStr = jsonMatch ? jsonMatch[1] : content;
       result = JSON.parse(jsonStr.trim());
     } catch {
+      console.error('Failed to parse JSON, raw content:', content.substring(0, 500));
       result = { raw: content };
     }
 
