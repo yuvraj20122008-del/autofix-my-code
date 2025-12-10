@@ -17,15 +17,28 @@ interface AnalysisRequest {
   action: 'analyze' | 'fix' | 'generate-docs';
 }
 
+// Truncate content to avoid token limits
+function truncateContent(content: string, maxLength: number): string {
+  if (content.length <= maxLength) return content;
+  return content.substring(0, maxLength) + '\n... [truncated]';
+}
+
+// Prepare files with truncation
+function prepareFiles(files: { path: string; content: string }[], maxPerFile: number, maxFiles: number) {
+  return files.slice(0, maxFiles).map(f => 
+    `--- ${f.path} ---\n${truncateContent(f.content, maxPerFile)}`
+  ).join('\n\n');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
-    if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const { repoSummary, action } = await req.json() as AnalysisRequest;
@@ -50,7 +63,8 @@ Provide a structured JSON response with:
   "overallScore": number (0-100),
   "summary": "brief summary"
 }`;
-      userPrompt = `Analyze this repository:\n\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles:\n${repoSummary.files.map(f => `--- ${f.path} ---\n${f.content.substring(0, 2000)}`).join('\n\n')}\n\nExisting Errors:\n${repoSummary.errors.join('\n')}\n\nWarnings:\n${repoSummary.warnings.join('\n')}`;
+      const filesContent = prepareFiles(repoSummary.files, 1500, 15);
+      userPrompt = `Analyze this repository:\n\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles:\n${filesContent}\n\nExisting Errors:\n${repoSummary.errors.slice(0, 20).join('\n')}\n\nWarnings:\n${repoSummary.warnings.slice(0, 20).join('\n')}`;
     } else if (action === 'fix') {
       systemPrompt = `You are an expert code fixer. Generate minimal, safe patches to fix the identified issues.
 
@@ -84,7 +98,8 @@ Respond with JSON:
   "skippedCount": number,
   "skippedReasons": ["reason1"]
 }`;
-      userPrompt = `Generate fixes for these issues:\n\nRepository Info:\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles with issues:\n${repoSummary.files.map(f => `--- ${f.path} ---\n${f.content.substring(0, 3000)}`).join('\n\n')}\n\nErrors to fix:\n${repoSummary.errors.join('\n')}\n\nWarnings:\n${repoSummary.warnings.join('\n')}`;
+      const filesContent = prepareFiles(repoSummary.files, 2000, 10);
+      userPrompt = `Generate fixes for these issues:\n\nRepository Info:\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\n\nFiles with issues:\n${filesContent}\n\nErrors to fix:\n${repoSummary.errors.slice(0, 15).join('\n')}\n\nWarnings:\n${repoSummary.warnings.slice(0, 15).join('\n')}`;
     } else if (action === 'generate-docs') {
       systemPrompt = `You are a technical documentation expert. Generate comprehensive documentation for the codebase.
 
@@ -99,34 +114,52 @@ Respond with JSON:
   "summary": "repo-summary.md content",
   "problemsSolved": "problems-solved.md content"
 }`;
-      userPrompt = `Generate documentation for:\n\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\nStructure: ${repoSummary.structure.join('\n')}\n\nKey files:\n${repoSummary.files.slice(0, 10).map(f => `--- ${f.path} ---\n${f.content.substring(0, 1500)}`).join('\n\n')}`;
+      const filesContent = prepareFiles(repoSummary.files, 1000, 8);
+      userPrompt = `Generate documentation for:\n\nLanguages: ${repoSummary.languages.join(', ')}\nFrameworks: ${repoSummary.frameworks.join(', ')}\nStructure: ${repoSummary.structure.slice(0, 30).join('\n')}\n\nKey files:\n${filesContent}`;
     }
 
-    console.log(`Processing ${action} request...`);
+    console.log(`Processing ${action} request with Lovable AI...`);
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.7,
-        max_completion_tokens: 8192,
-        top_p: 1,
-        stream: false,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Groq API error:', response.status, errorText);
-      throw new Error(`Groq API error: ${response.status}`);
+      console.error('Lovable AI error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Rate limit exceeded. Please try again in a moment.' 
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'AI credits exhausted. Please add credits to continue.' 
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw new Error(`AI API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -135,6 +168,8 @@ Respond with JSON:
     if (!content) {
       throw new Error('No content in response');
     }
+
+    console.log(`${action} completed successfully`);
 
     // Try to parse as JSON, otherwise return as text
     let result;
