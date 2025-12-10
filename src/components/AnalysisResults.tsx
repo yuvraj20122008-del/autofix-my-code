@@ -9,11 +9,17 @@ import {
   Copy,
   Check,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ArrowDown,
+  Minus,
+  Plus,
+  Code2,
+  Wrench
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnalysisResult, PatchResult, DocsResult } from '@/types/analysis';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 interface AnalysisResultsProps {
   analysis: AnalysisResult | null;
@@ -41,7 +47,19 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
   const copyToClipboard = async (text: string, index: number) => {
     await navigator.clipboard.writeText(text);
     setCopiedIndex(index);
+    toast({
+      title: "Copied to clipboard",
+      description: "The code has been copied and is ready to paste.",
+    });
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  // Add line numbers to code
+  const addLineNumbers = (code: string) => {
+    return code.split('\n').map((line, i) => ({
+      number: i + 1,
+      content: line
+    }));
   };
 
   const downloadDocs = () => {
@@ -226,79 +244,126 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
 
       {/* Patches Tab */}
       {activeTab === 'patches' && patches && (
-        <div className="space-y-4 animate-fade-in">
-          <div className="glass-effect rounded-xl p-6 mb-6">
-            <p className="text-foreground">{patches.summary}</p>
-            <div className="flex gap-4 mt-3 text-sm">
-              <span className="text-success">Fixed: {patches.fixedCount}</span>
-              <span className="text-muted-foreground">Skipped: {patches.skippedCount}</span>
+        <div className="space-y-5 animate-fade-in">
+          {/* Summary Card */}
+          <div className="glass-effect rounded-xl p-6 mb-6 border border-border/50">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Wrench className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Fix Summary</h3>
+                <p className="text-foreground/80">{patches.summary}</p>
+                <div className="flex gap-6 mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-success" />
+                    <span className="text-sm text-foreground">{patches.fixedCount} Fixed</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-muted" />
+                    <span className="text-sm text-muted-foreground">{patches.skippedCount} Skipped</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
+          {/* Patches List */}
           {patches.patches?.map((patch, i) => (
-            <div key={i} className="glass-effect rounded-xl overflow-hidden">
+            <div key={i} className="glass-effect rounded-xl overflow-hidden border border-border/50 transition-all duration-200 hover:border-primary/30">
+              {/* Patch Header */}
               <button
                 onClick={() => togglePatch(i)}
                 className="w-full p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  {expandedPatches.has(i) ? (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  <span className="font-mono text-sm text-primary">{patch.file}</span>
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full",
-                    patch.risk === 'low' && "bg-success/20 text-success",
-                    patch.risk === 'medium' && "bg-warning/20 text-warning",
-                    patch.risk === 'high' && "bg-destructive/20 text-destructive"
+                  <div className={cn(
+                    "p-1.5 rounded-md transition-colors",
+                    expandedPatches.has(i) ? "bg-primary/20" : "bg-secondary"
                   )}>
-                    {patch.risk} risk
-                  </span>
+                    {expandedPatches.has(i) ? (
+                      <ChevronDown className="w-4 h-4 text-primary" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <Code2 className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-mono text-sm text-primary font-medium">{patch.file}</span>
                 </div>
+                <span className={cn(
+                  "text-xs px-3 py-1 rounded-full font-medium",
+                  patch.risk === 'low' && "bg-success/20 text-success border border-success/30",
+                  patch.risk === 'medium' && "bg-warning/20 text-warning border border-warning/30",
+                  patch.risk === 'high' && "bg-destructive/20 text-destructive border border-destructive/30"
+                )}>
+                  {patch.risk} risk
+                </span>
               </button>
               
+              {/* Expanded Content */}
               {expandedPatches.has(i) && (
-                <div className="border-t border-border">
-                  <div className="p-4 bg-secondary/20">
-                    <p className="text-sm text-foreground mb-3">{patch.explanation}</p>
+                <div className="border-t border-border animate-fade-in">
+                  {/* Explanation */}
+                  <div className="p-4 bg-secondary/20 border-b border-border">
+                    <p className="text-sm text-foreground leading-relaxed">{patch.explanation}</p>
                     {patch.testCommand && (
-                      <p className="text-xs text-muted-foreground font-mono">
-                        Test: {patch.testCommand}
-                      </p>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium">Test command:</span>
+                        <code className="px-2 py-1 bg-terminal-bg rounded font-mono">{patch.testCommand}</code>
+                      </div>
                     )}
                   </div>
                   
                   {/* Original Code - What to Change (Red) */}
                   {patch.original && (
-                    <div className="border-t border-border">
-                      <div className="flex items-center justify-between px-4 py-2 bg-destructive/10 border-b border-destructive/20">
-                        <span className="text-sm font-medium text-destructive flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4" />
-                          Remove this code
+                    <div className="border-b border-border">
+                      <div className="flex items-center justify-between px-4 py-3 bg-destructive/10">
+                        <span className="text-sm font-semibold text-destructive flex items-center gap-2">
+                          <Minus className="w-4 h-4" />
+                          REMOVE
                         </span>
+                        <span className="text-xs text-destructive/70">Original code to delete</span>
                       </div>
-                      <pre className="p-4 bg-destructive/5 overflow-x-auto border-l-4 border-destructive">
-                        <code className="text-sm font-mono text-destructive/90 whitespace-pre">
-                          {patch.original}
-                        </code>
-                      </pre>
+                      <div className="bg-destructive/5 overflow-x-auto">
+                        <table className="w-full">
+                          <tbody>
+                            {addLineNumbers(patch.original).map((line) => (
+                              <tr key={line.number} className="hover:bg-destructive/10">
+                                <td className="px-3 py-0.5 text-right text-xs text-destructive/50 select-none border-r border-destructive/20 w-12 font-mono">
+                                  {line.number}
+                                </td>
+                                <td className="px-4 py-0.5">
+                                  <code className="text-sm font-mono text-destructive whitespace-pre">
+                                    {line.content || ' '}
+                                  </code>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Arrow Indicator */}
+                  {patch.original && patch.fixed && (
+                    <div className="flex items-center justify-center py-2 bg-secondary/30">
+                      <ArrowDown className="w-5 h-5 text-muted-foreground" />
                     </div>
                   )}
                   
                   {/* Fixed Code - Change To (Green) */}
                   {patch.fixed && (
-                    <div className="border-t border-border">
-                      <div className="flex items-center justify-between px-4 py-2 bg-success/10 border-b border-success/20">
-                        <span className="text-sm font-medium text-success flex items-center gap-2">
-                          <Check className="w-4 h-4" />
-                          Replace with this code
+                    <div>
+                      <div className="flex items-center justify-between px-4 py-3 bg-success/10">
+                        <span className="text-sm font-semibold text-success flex items-center gap-2">
+                          <Plus className="w-4 h-4" />
+                          ADD
                         </span>
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="h-7 text-success hover:text-success hover:bg-success/20"
+                          variant="outline"
+                          className="h-8 text-success border-success/30 hover:text-success hover:bg-success/20 hover:border-success/50"
                           onClick={(e) => {
                             e.stopPropagation();
                             copyToClipboard(patch.fixed, i);
@@ -306,37 +371,88 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                         >
                           {copiedIndex === i ? (
                             <>
-                              <Check className="w-3 h-3 mr-1" />
+                              <Check className="w-3.5 h-3.5 mr-1.5" />
                               Copied!
                             </>
                           ) : (
                             <>
-                              <Copy className="w-3 h-3 mr-1" />
-                              Copy
+                              <Copy className="w-3.5 h-3.5 mr-1.5" />
+                              Copy Code
                             </>
                           )}
                         </Button>
                       </div>
-                      <pre className="p-4 bg-success/5 overflow-x-auto border-l-4 border-success">
-                        <code className="text-sm font-mono text-success/90 whitespace-pre">
-                          {patch.fixed}
-                        </code>
-                      </pre>
+                      <div className="bg-success/5 overflow-x-auto">
+                        <table className="w-full">
+                          <tbody>
+                            {addLineNumbers(patch.fixed).map((line) => (
+                              <tr key={line.number} className="hover:bg-success/10">
+                                <td className="px-3 py-0.5 text-right text-xs text-success/50 select-none border-r border-success/20 w-12 font-mono">
+                                  {line.number}
+                                </td>
+                                <td className="px-4 py-0.5">
+                                  <code className="text-sm font-mono text-success whitespace-pre">
+                                    {line.content || ' '}
+                                  </code>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                   
-                  {/* Full Diff (collapsed by default if original/fixed are present) */}
+                  {/* Full Diff fallback */}
                   {patch.diff && (!patch.original || !patch.fixed) && (
-                    <pre className="p-4 bg-terminal-bg overflow-x-auto">
-                      <code className="text-sm font-mono text-terminal-text whitespace-pre">
-                        {patch.diff}
-                      </code>
-                    </pre>
+                    <div>
+                      <div className="flex items-center justify-between px-4 py-3 bg-secondary/30">
+                        <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Code2 className="w-4 h-4" />
+                          Diff
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(patch.diff, i);
+                          }}
+                        >
+                          {copiedIndex === i ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 mr-1.5" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 mr-1.5" />
+                              Copy Diff
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <pre className="p-4 bg-terminal-bg overflow-x-auto">
+                        <code className="text-sm font-mono text-terminal-text whitespace-pre">
+                          {patch.diff}
+                        </code>
+                      </pre>
+                    </div>
                   )}
                 </div>
               )}
             </div>
           ))}
+
+          {/* Empty State */}
+          {(!patches.patches || patches.patches.length === 0) && (
+            <div className="text-center py-12">
+              <Check className="w-12 h-12 text-success mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground">No patches needed</h3>
+              <p className="text-muted-foreground mt-1">Your code looks good!</p>
+            </div>
+          )}
         </div>
       )}
 
