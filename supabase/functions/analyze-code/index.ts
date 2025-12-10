@@ -17,6 +17,22 @@ interface AnalysisRequest {
   action: 'analyze' | 'fix' | 'generate-docs';
 }
 
+// Validate request structure
+function validateRequest(req: unknown): req is AnalysisRequest {
+  if (!req || typeof req !== 'object') return false;
+  const r = req as any;
+  return (
+    r.repoSummary &&
+    Array.isArray(r.repoSummary.languages) &&
+    Array.isArray(r.repoSummary.frameworks) &&
+    Array.isArray(r.repoSummary.files) &&
+    Array.isArray(r.repoSummary.errors) &&
+    Array.isArray(r.repoSummary.warnings) &&
+    Array.isArray(r.repoSummary.structure) &&
+    (r.action === 'analyze' || r.action === 'fix' || r.action === 'generate-docs')
+  );
+}
+
 // Truncate content to avoid token limits
 function truncateContent(content: string, maxLength: number): string {
   if (content.length <= maxLength) return content;
@@ -30,6 +46,21 @@ function prepareFiles(files: { path: string; content: string }[], maxPerFile: nu
   ).join('\n\n');
 }
 
+// Validate JSON response structure
+function validateAnalysisResponse(result: unknown, action: string): boolean {
+  if (!result || typeof result !== 'object') return false;
+  const r = result as any;
+  
+  if (action === 'analyze') {
+    return Array.isArray(r.criticalErrors) && Array.isArray(r.warnings) && typeof r.overallScore === 'number';
+  } else if (action === 'fix') {
+    return Array.isArray(r.patches) && typeof r.fixedCount === 'number' && typeof r.skippedCount === 'number';
+  } else if (action === 'generate-docs') {
+    return typeof r.readme === 'string' && typeof r.summary === 'string';
+  }
+  return false;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -38,10 +69,36 @@ serve(async (req) => {
   try {
     const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
     if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured');
+      console.error('GROQ_API_KEY is not configured');
+      throw new Error('API configuration error');
     }
 
-    const { repoSummary, action } = await req.json() as AnalysisRequest;
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      console.error('Invalid JSON body:', e);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid request format' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!validateRequest(requestBody)) {
+      console.error('Invalid request structure');
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid request structure' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { repoSummary, action } = requestBody;
 
     let systemPrompt = '';
     let userPrompt = '';
@@ -148,7 +205,8 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error('No content in response');
+      console.error('No content in response from API');
+      throw new Error('Empty response from API');
     }
 
     console.log(`${action} completed successfully`);
@@ -160,9 +218,24 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1] : content;
       result = JSON.parse(jsonStr.trim());
-    } catch {
-      console.error('Failed to parse JSON, raw content:', content.substring(0, 500));
-      result = { raw: content };
+      
+      // Validate the response structure
+      if (!validateAnalysisResponse(result, action)) {
+        console.error('Response validation failed for action:', action);
+        console.error('Raw result:', JSON.stringify(result).substring(0, 500));
+        throw new Error(`Invalid response structure for ${action}`);
+      }
+    } catch (parseError) {
+      console.error('Failed to parse or validate JSON:', parseError);
+      console.error('Raw content:', content.substring(0, 500));
+      // Return structured error instead of raw content
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to parse API response. Please try again.' 
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     return new Response(JSON.stringify({ success: true, result, action }), {
@@ -171,11 +244,15 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
 
   } catch (error) {
     console.error('Error in analyze-code function:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const statusCode = errorMessage.includes('API configuration') ? 500 : 500;
+    
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: 'An error occurred while processing your request. Please try again.' 
     }), {
-      status: 500,
+      status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

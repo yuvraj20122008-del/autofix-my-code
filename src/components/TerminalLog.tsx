@@ -55,15 +55,15 @@ export function TerminalLog({ logs, className }: TerminalLogProps) {
     <div 
       ref={containerRef}
       className={cn(
-        "bg-terminal-bg rounded-lg border border-border p-4 font-mono text-sm overflow-auto",
+        "bg-terminal-bg rounded-lg border border-border p-3 sm:p-4 font-mono text-xs sm:text-sm overflow-auto",
         className
       )}
     >
-      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-destructive/80" />
-          <div className="w-3 h-3 rounded-full bg-warning/80" />
-          <div className="w-3 h-3 rounded-full bg-success/80" />
+      <div className="flex items-center gap-2 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-border/50">
+        <div className="flex gap-1.5 flex-shrink-0">
+          <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-destructive/80" />
+          <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-warning/80" />
+          <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-success/80" />
         </div>
         <span className="text-muted-foreground text-xs">autofix-terminal</span>
       </div>
@@ -73,23 +73,23 @@ export function TerminalLog({ logs, className }: TerminalLogProps) {
           <div className="text-muted-foreground flex items-center gap-2">
             <span>$</span>
             <span className="animate-terminal-cursor">_</span>
-            <span className="opacity-50">Waiting for input...</span>
+            <span className="opacity-50 text-xs">Waiting for input...</span>
           </div>
         ) : (
           logs.map((log, index) => (
             <div 
               key={log.id} 
               className={cn(
-                "terminal-line animate-fade-in",
+                "terminal-line animate-fade-in break-words",
                 getTypeStyles(log.type)
               )}
               style={{ animationDelay: `${index * 0.05}s` }}
             >
-              <span className="text-muted-foreground mr-2">{formatTime(log.timestamp)}</span>
-              <span className="mr-2">{getPrefix(log.type)}</span>
+              <span className="text-muted-foreground mr-1 sm:mr-2 hidden sm:inline">{formatTime(log.timestamp)}</span>
+              <span className="mr-1 sm:mr-2">{getPrefix(log.type)}</span>
               <span>{log.message}</span>
               {log.details && (
-                <div className="ml-16 mt-1 text-muted-foreground text-xs">
+                <div className="ml-4 sm:ml-16 mt-1 text-muted-foreground text-xs break-words">
                   {log.details}
                 </div>
               )}

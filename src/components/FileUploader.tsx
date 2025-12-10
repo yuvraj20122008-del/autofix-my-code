@@ -99,32 +99,34 @@ export function FileUploader({ onFilesSelected, onGitHubUrl, isLoading }: FileUp
   }, [gitHubUrl, onGitHubUrl]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-0">
       {/* Tab Switcher */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 sm:mb-8 bg-secondary/30 p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('upload')}
           className={cn(
-            "flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2",
+            "flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm",
             activeTab === 'upload'
               ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <FolderOpen className="w-4 h-4" />
-          Upload Folder
+          <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Upload Folder</span>
+          <span className="sm:hidden">Upload</span>
         </button>
         <button
           onClick={() => setActiveTab('github')}
           className={cn(
-            "flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2",
+            "flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm",
             activeTab === 'github'
               ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Github className="w-4 h-4" />
-          GitHub URL
+          <Github className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">GitHub URL</span>
+          <span className="sm:hidden">GitHub</span>
         </button>
       </div>
 
@@ -135,10 +137,10 @@ export function FileUploader({ onFilesSelected, onGitHubUrl, isLoading }: FileUp
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
           className={cn(
-            "relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-300",
+            "relative border-2 border-dashed rounded-lg sm:rounded-xl p-6 sm:p-12 text-center cursor-pointer transition-all duration-300 glass-effect hover:border-primary/60 hover:shadow-xl hover:shadow-primary/10",
             isDragOver 
               ? "border-primary bg-primary/10 scale-[1.02]" 
-              : "border-border hover:border-primary/50 hover:bg-secondary/30",
+              : "border-border/60",
             isLoading && "pointer-events-none opacity-50"
           )}
         >
@@ -153,44 +155,48 @@ export function FileUploader({ onFilesSelected, onGitHubUrl, isLoading }: FileUp
             className="hidden"
           />
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3 sm:gap-4">
             {isLoading ? (
-              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              <div className="p-3 sm:p-4 rounded-full bg-primary/20">
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-spin" />
+              </div>
             ) : (
-              <div className="p-4 rounded-full bg-primary/10">
-                <Upload className="w-8 h-8 text-primary" />
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-primary/30 to-accent/20 group-hover:from-primary/40 group-hover:to-accent/30 transition-all duration-300">
+                <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
               </div>
             )}
             
-            <div>
-              <p className="text-lg font-medium text-foreground">
-                {isDragOver ? 'Drop folder here' : 'Drag & drop a folder'}
+            <div className="px-2">
+              <p className="text-base sm:text-lg font-semibold text-foreground">
+                {isDragOver ? 'Drop folder here' : 'Drag & drop your folder'}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                or click to browse
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                or tap to browse your device
               </p>
             </div>
 
-            <p className="text-xs text-muted-foreground mt-2">
-              Supports all major programming languages and frameworks
-            </p>
+            <div className="pt-2">
+              <p className="text-xs text-muted-foreground px-3 sm:px-4 py-2 rounded-full bg-secondary/30">
+                🎯 All major languages supported
+              </p>
+            </div>
           </div>
 
           {isDragOver && (
-            <div className="absolute inset-0 bg-primary/5 rounded-xl pointer-events-none" />
+            <div className="absolute inset-0 bg-primary/5 rounded-lg sm:rounded-xl pointer-events-none" />
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
-              <Github className="w-5 h-5 text-muted-foreground" />
+            <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2">
+              <Github className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
             </div>
             <Input
               value={gitHubUrl}
               onChange={(e) => setGitHubUrl(e.target.value)}
-              placeholder="https://github.com/username/repository"
-              className="pl-12 h-14 text-base"
+              placeholder="https://github.com/user/repo"
+              className="pl-9 sm:pl-12 h-11 sm:h-14 text-sm sm:text-base border-border/60 hover:border-primary/40 transition-colors"
               onKeyDown={(e) => e.key === 'Enter' && handleGitHubSubmit()}
               disabled={isLoading}
             />
@@ -199,24 +205,26 @@ export function FileUploader({ onFilesSelected, onGitHubUrl, isLoading }: FileUp
           <Button
             onClick={handleGitHubSubmit}
             disabled={!gitHubUrl.trim() || isLoading}
-            className="w-full h-12"
+            className="w-full h-11 sm:h-12 font-semibold text-sm sm:text-base"
             size="lg"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Fetching Repository...
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <span className="hidden sm:inline">Fetching Repository...</span>
+                <span className="sm:hidden">Fetching...</span>
               </>
             ) : (
               <>
-                <Github className="w-4 h-4" />
-                Fetch Repository
+                <Github className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Fetch Repository</span>
+                <span className="sm:hidden">Fetch</span>
               </>
             )}
           </Button>
 
-          <p className="text-xs text-muted-foreground text-center">
-            Public repositories only. For private repos, upload the folder directly.
+          <p className="text-xs text-muted-foreground text-center bg-secondary/20 p-2 sm:p-3 rounded-lg">
+            📝 Public repos only. Use upload for private repos.
           </p>
         </div>
       )}

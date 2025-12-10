@@ -246,22 +246,30 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
       {activeTab === 'patches' && patches && (
         <div className="space-y-5 animate-fade-in">
           {/* Summary Card */}
-          <div className="glass-effect rounded-xl p-6 mb-6 border border-border/50">
+          <div className="glass-effect rounded-xl p-6 mb-6 border border-border/50 bg-gradient-to-br from-primary/5 to-accent/5">
             <div className="flex items-start gap-4">
-              <div className="p-3 rounded-lg bg-primary/10">
+              <div className="p-3 rounded-lg bg-primary/20">
                 <Wrench className="w-6 h-6 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-foreground mb-2">Fix Summary</h3>
-                <p className="text-foreground/80">{patches.summary}</p>
-                <div className="flex gap-6 mt-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-success" />
-                    <span className="text-sm text-foreground">{patches.fixedCount} Fixed</span>
+                <h3 className="text-xl font-bold text-foreground mb-2">Generated Patches</h3>
+                <p className="text-foreground/80 mb-4 leading-relaxed">{patches.summary}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+                  <div className="rounded-lg bg-background/50 p-3 border border-success/20">
+                    <div className="text-2xl font-bold text-success">{patches.fixedCount}</div>
+                    <span className="text-xs text-muted-foreground">Issues Fixed</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-muted" />
-                    <span className="text-sm text-muted-foreground">{patches.skippedCount} Skipped</span>
+                  <div className="rounded-lg bg-background/50 p-3 border border-muted/20">
+                    <div className="text-2xl font-bold text-muted-foreground">{patches.skippedCount}</div>
+                    <span className="text-xs text-muted-foreground">Skipped</span>
+                  </div>
+                  <div className="rounded-lg bg-background/50 p-3 border border-primary/20">
+                    <div className="text-2xl font-bold text-primary">{patches.patches?.length || 0}</div>
+                    <span className="text-xs text-muted-foreground">Total Patches</span>
+                  </div>
+                  <div className="rounded-lg bg-background/50 p-3 border border-warning/20">
+                    <div className="text-2xl font-bold text-warning">{patches.patches?.filter(p => p.risk === 'high').length || 0}</div>
+                    <span className="text-xs text-muted-foreground">High Risk</span>
                   </div>
                 </div>
               </div>
@@ -269,36 +277,46 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
           </div>
 
           {/* Patches List */}
-          {patches.patches?.map((patch, i) => (
-            <div key={i} className="glass-effect rounded-xl overflow-hidden border border-border/50 transition-all duration-200 hover:border-primary/30">
-              {/* Patch Header */}
-              <button
-                onClick={() => togglePatch(i)}
-                className="w-full p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-1.5 rounded-md transition-colors",
-                    expandedPatches.has(i) ? "bg-primary/20" : "bg-secondary"
-                  )}>
-                    {expandedPatches.has(i) ? (
-                      <ChevronDown className="w-4 h-4 text-primary" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    )}
+          {patches.patches?.length === 0 ? (
+            <div className="text-center py-12 glass-effect rounded-xl p-8">
+              <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground mb-2">No patches generated</p>
+              <p className="text-sm text-muted-foreground">Your code looks good!</p>
+            </div>
+          ) : (
+            patches.patches?.map((patch, i) => (
+              <div key={i} className="glass-effect rounded-xl overflow-hidden border border-border/50 transition-all duration-200 hover:border-primary/40 hover:shadow-lg">
+                {/* Patch Header */}
+                <button
+                  onClick={() => togglePatch(i)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-secondary/50 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={cn(
+                      "p-1.5 rounded-md transition-colors flex-shrink-0",
+                      expandedPatches.has(i) ? "bg-primary/20" : "bg-secondary/50"
+                    )}>
+                      {expandedPatches.has(i) ? (
+                        <ChevronDown className="w-4 h-4 text-primary" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <Code2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0 text-left">
+                      <span className="font-mono text-sm text-primary font-semibold block truncate">{patch.file}</span>
+                      <span className="text-xs text-muted-foreground">Click to view changes</span>
+                    </div>
                   </div>
-                  <Code2 className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-mono text-sm text-primary font-medium">{patch.file}</span>
-                </div>
-                <span className={cn(
-                  "text-xs px-3 py-1 rounded-full font-medium",
-                  patch.risk === 'low' && "bg-success/20 text-success border border-success/30",
-                  patch.risk === 'medium' && "bg-warning/20 text-warning border border-warning/30",
-                  patch.risk === 'high' && "bg-destructive/20 text-destructive border border-destructive/30"
-                )}>
-                  {patch.risk} risk
-                </span>
-              </button>
+                  <span className={cn(
+                    "text-xs px-3 py-1.5 rounded-full font-semibold flex-shrink-0 ml-2",
+                    patch.risk === 'low' && "bg-success/20 text-success border border-success/30",
+                    patch.risk === 'medium' && "bg-warning/20 text-warning border border-warning/30",
+                    patch.risk === 'high' && "bg-destructive/20 text-destructive border border-destructive/30"
+                  )}>
+                    {patch.risk} risk
+                  </span>
+                </button>
               
               {/* Expanded Content */}
               {expandedPatches.has(i) && (
@@ -307,9 +325,9 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                   <div className="p-4 bg-secondary/20 border-b border-border">
                     <p className="text-sm text-foreground leading-relaxed">{patch.explanation}</p>
                     {patch.testCommand && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-medium">Test command:</span>
-                        <code className="px-2 py-1 bg-terminal-bg rounded font-mono">{patch.testCommand}</code>
+                      <div className="mt-4 p-3 rounded-lg bg-terminal-bg/50 border border-terminal-text/10">
+                        <div className="text-xs text-muted-foreground font-medium mb-2">Test command:</div>
+                        <code className="text-xs text-terminal-text font-mono break-all">{patch.testCommand}</code>
                       </div>
                     )}
                   </div>
@@ -317,19 +335,19 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                   {/* Original Code - What to Change (Red) */}
                   {patch.original && (
                     <div className="border-b border-border">
-                      <div className="flex items-center justify-between px-4 py-3 bg-destructive/10">
-                        <span className="text-sm font-semibold text-destructive flex items-center gap-2">
+                      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-destructive/15 to-destructive/5">
+                        <span className="text-sm font-bold text-destructive flex items-center gap-2">
                           <Minus className="w-4 h-4" />
                           REMOVE
                         </span>
-                        <span className="text-xs text-destructive/70">Original code to delete</span>
+                        <span className="text-xs text-destructive/70 font-medium">Original code</span>
                       </div>
                       <div className="bg-destructive/5 overflow-x-auto">
                         <table className="w-full">
                           <tbody>
                             {addLineNumbers(patch.original).map((line) => (
-                              <tr key={line.number} className="hover:bg-destructive/10">
-                                <td className="px-3 py-0.5 text-right text-xs text-destructive/50 select-none border-r border-destructive/20 w-12 font-mono">
+                              <tr key={line.number} className="hover:bg-destructive/10 transition-colors">
+                                <td className="px-3 py-0.5 text-right text-xs text-destructive/50 select-none border-r border-destructive/20 w-12 font-mono sticky left-0 bg-destructive/5">
                                   {line.number}
                                 </td>
                                 <td className="px-4 py-0.5">
@@ -355,8 +373,8 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                   {/* Fixed Code - Change To (Green) */}
                   {patch.fixed && (
                     <div>
-                      <div className="flex items-center justify-between px-4 py-3 bg-success/10">
-                        <span className="text-sm font-semibold text-success flex items-center gap-2">
+                      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-success/15 to-success/5">
+                        <span className="text-sm font-bold text-success flex items-center gap-2">
                           <Plus className="w-4 h-4" />
                           ADD
                         </span>
@@ -386,8 +404,8 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                         <table className="w-full">
                           <tbody>
                             {addLineNumbers(patch.fixed).map((line) => (
-                              <tr key={line.number} className="hover:bg-success/10">
-                                <td className="px-3 py-0.5 text-right text-xs text-success/50 select-none border-r border-success/20 w-12 font-mono">
+                              <tr key={line.number} className="hover:bg-success/10 transition-colors">
+                                <td className="px-3 py-0.5 text-right text-xs text-success/50 select-none border-r border-success/20 w-12 font-mono sticky left-0 bg-success/5">
                                   {line.number}
                                 </td>
                                 <td className="px-4 py-0.5">
@@ -443,15 +461,7 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                 </div>
               )}
             </div>
-          ))}
-
-          {/* Empty State */}
-          {(!patches.patches || patches.patches.length === 0) && (
-            <div className="text-center py-12">
-              <Check className="w-12 h-12 text-success mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground">No patches needed</h3>
-              <p className="text-muted-foreground mt-1">Your code looks good!</p>
-            </div>
+            ))
           )}
         </div>
       )}

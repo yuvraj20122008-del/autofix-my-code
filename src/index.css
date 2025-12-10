@@ -73,6 +73,12 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* Touch optimization */
+    -webkit-user-select: text;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    /* Smooth scrolling on mobile */
+    -webkit-overflow-scrolling: touch;
   }
 
   ::selection {
@@ -94,6 +100,18 @@
 
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
+  }
+
+  /* Touch-friendly button minimum size */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Input fields touch optimization */
+  input, textarea, select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents auto-zoom on iOS */
   }
 }
 
@@ -146,6 +164,17 @@
     50% {
       box-shadow: 0 0 40px hsl(187 100% 50% / 0.5);
     }
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 6s ease infinite;
+  }
+
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 
   .animate-terminal-cursor {

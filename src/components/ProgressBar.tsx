@@ -31,18 +31,18 @@ export function ProgressBar({ progress, status }: ProgressBarProps) {
   const isComplete = status === 'complete';
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-0">
       {/* Progress Steps */}
-      <div className="flex justify-between mb-3">
+      <div className="flex justify-between mb-2 sm:mb-3 gap-1 sm:gap-2">
         {STEPS.map((step, index) => {
           const isActive = progress >= step.threshold;
           const isCurrent = progress >= (STEPS[index - 1]?.threshold || 0) && progress < step.threshold;
           
           return (
-            <div key={step.label} className="flex flex-col items-center gap-1">
+            <div key={step.label} className="flex flex-col items-center gap-1 flex-1">
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300",
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0",
                   isActive && !isError && "bg-primary text-primary-foreground shadow-lg shadow-primary/30",
                   isCurrent && !isError && "bg-primary/20 text-primary border-2 border-primary",
                   !isActive && !isCurrent && "bg-secondary text-muted-foreground",
@@ -52,7 +52,7 @@ export function ProgressBar({ progress, status }: ProgressBarProps) {
                 {index + 1}
               </div>
               <span className={cn(
-                "text-xs",
+                "text-xs hidden sm:block",
                 isActive || isCurrent ? "text-foreground" : "text-muted-foreground"
               )}>
                 {step.label}
@@ -76,16 +76,16 @@ export function ProgressBar({ progress, status }: ProgressBarProps) {
       </div>
 
       {/* Status Label */}
-      <div className="flex justify-between items-center mt-3">
+      <div className="flex justify-between items-center mt-2 sm:mt-3 gap-2">
         <span className={cn(
-          "text-sm font-medium",
+          "text-xs sm:text-sm font-medium truncate",
           isError && "text-destructive",
           isComplete && "text-success",
           !isError && !isComplete && "text-primary"
         )}>
           {STATUS_LABELS[status]}
         </span>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">
           {progress}%
         </span>
       </div>
