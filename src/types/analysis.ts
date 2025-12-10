@@ -40,6 +40,8 @@ export interface AnalysisResult {
 export interface PatchResult {
   patches: Array<{
     file: string;
+    original: string;
+    fixed: string;
     diff: string;
     explanation: string;
     risk: 'low' | 'medium' | 'high';

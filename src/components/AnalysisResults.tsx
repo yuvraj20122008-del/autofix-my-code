@@ -257,20 +257,6 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                     {patch.risk} risk
                   </span>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    copyToClipboard(patch.diff, i);
-                  }}
-                >
-                  {copiedIndex === i ? (
-                    <Check className="w-4 h-4 text-success" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
               </button>
               
               {expandedPatches.has(i) && (
@@ -283,11 +269,70 @@ export function AnalysisResults({ analysis, patches, docs }: AnalysisResultsProp
                       </p>
                     )}
                   </div>
-                  <pre className="p-4 bg-terminal-bg overflow-x-auto">
-                    <code className="text-sm font-mono text-terminal-text whitespace-pre">
-                      {patch.diff}
-                    </code>
-                  </pre>
+                  
+                  {/* Original Code - What to Change (Red) */}
+                  {patch.original && (
+                    <div className="border-t border-border">
+                      <div className="flex items-center justify-between px-4 py-2 bg-destructive/10 border-b border-destructive/20">
+                        <span className="text-sm font-medium text-destructive flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          Remove this code
+                        </span>
+                      </div>
+                      <pre className="p-4 bg-destructive/5 overflow-x-auto border-l-4 border-destructive">
+                        <code className="text-sm font-mono text-destructive/90 whitespace-pre">
+                          {patch.original}
+                        </code>
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {/* Fixed Code - Change To (Green) */}
+                  {patch.fixed && (
+                    <div className="border-t border-border">
+                      <div className="flex items-center justify-between px-4 py-2 bg-success/10 border-b border-success/20">
+                        <span className="text-sm font-medium text-success flex items-center gap-2">
+                          <Check className="w-4 h-4" />
+                          Replace with this code
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-success hover:text-success hover:bg-success/20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(patch.fixed, i);
+                          }}
+                        >
+                          {copiedIndex === i ? (
+                            <>
+                              <Check className="w-3 h-3 mr-1" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 mr-1" />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <pre className="p-4 bg-success/5 overflow-x-auto border-l-4 border-success">
+                        <code className="text-sm font-mono text-success/90 whitespace-pre">
+                          {patch.fixed}
+                        </code>
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {/* Full Diff (collapsed by default if original/fixed are present) */}
+                  {patch.diff && (!patch.original || !patch.fixed) && (
+                    <pre className="p-4 bg-terminal-bg overflow-x-auto">
+                      <code className="text-sm font-mono text-terminal-text whitespace-pre">
+                        {patch.diff}
+                      </code>
+                    </pre>
+                  )}
                 </div>
               )}
             </div>
